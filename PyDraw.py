@@ -290,7 +290,7 @@ def main():
 
                         n = len(selected_items)
 
-                        if n > 2 and set(x.type for x in selected_items)==set("Point"): RenderList.append( Polygon( selected_items ) ) # More than two points
+                        if n > 2 and set(x.type for x in selected_items)==set(["Point"]): RenderList.append( Polygon( selected_items ) ) # More than two points
 
                     for item in selected_items: item.selected = False
                     selected_items = []
