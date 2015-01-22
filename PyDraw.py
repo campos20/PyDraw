@@ -1,452 +1,450 @@
+""" Created by:         Alexandre Campos
+    Last modification:  01/22/2015
+"""
+
 import pygame
 
-BLACK	=   0,   0,   0
-WHITE	= 255, 255, 255
-RED	= 255,   0,   0
-GREEN	=   0, 255,   0
-BLUE	=   0,   0, 255
-LGRAY	= 220, 220, 220
-GRAY	= 150, 150, 150
+BLACK   =   0,   0,   0
+WHITE   = 255, 255, 255
+RED     = 255,   0,   0
+GREEN   =   0, 255,   0
+BLUE    =   0,   0, 255
+LGRAY   = 220, 220, 220
+GRAY    = 150, 150, 150
 
-SIZE	= 1280, 720
+SIZE     = 1280, 720
 
 def main():
 
-	class Point:
-		"""The points."""
+    class Base():
+        """Base to drawable objects."""
+        def __init__(self):
 
-		def __init__(self, color, pos, size):
-			self.color = color
-			self.pos = pos
-			self.size = size
-			self.selected = False
-			self.type = "Point"
-			self.visible = True
+            self.selected = False
+            self.visible = True
+
+    class Point(Base):
+        """The points."""
+
+        def __init__(self, color, pos, size):
+            Base.__init__(self)
+            self.color = color
+            self.pos = pos
+            self.size = size
+            self.type = "Point"
+
+            self.spec = "Point = (%s, %s)"%(self.pos[0]-left_bar_size, self.pos[1]-bar_size)
+
+        def Render(self): #Draw the points
+            if self.visible:
+                if self.selected: # Mask if selected
+                    pygame.draw.circle(screen, RED, self.pos, self.size+2)
+                pygame.draw.circle(screen, self.color, self.pos, self.size)
+
+        def Update(self):
+            self.spec = "Point = (%s, %s)"%(self.pos[0]-left_bar_size, self.pos[1]-bar_size)
 
-			self.spec = "Point = (%s, %s)"%(self.pos[0]-left_bar_size, self.pos[1]-bar_size)
+        def set_pos(self, pos): # Change the pos of point inside the workspace
+            x, y = pos
+            x = max(x, left_bar_size)
+            x = min(x, SIZE[0])
 
-		def Render(self): #Draw the points
+            y = max(y, bar_size)
+            y = min(y, SIZE[1])
+
+            self.pos = [x, y]
+
+    class Segment(Base):
+        """The segments."""
 
-			if self.visible:
+        def __init__(self, start, end):
+            Base.__init__(self)
+            self.color = BLACK
+            self.start = start
+            self.end = end
+            self.type = "Segment"
 
-				if self.selected: # Mask if selected
-					pygame.draw.circle(screen, RED, self.pos, self.size+2)
+            self.spec = "Segment: %s"%Point_Distance(self.start.pos, self.end.pos)
 
-				pygame.draw.circle(screen, self.color, self.pos, self.size)
+        def Render(self):
+            if self.visible:
+                if self.selected: pygame.draw.line(screen, RED, self.start.pos, self.end.pos)
+                else: pygame.draw.line(screen, self.color, self.start.pos, self.end.pos)
 
-		def Update(self):
-			self.spec = "Point = (%s, %s)"%(self.pos[0]-left_bar_size, self.pos[1]-bar_size)
+        def Update(self):
+            self.spec = "Segment: %s"%Point_Distance(self.start.pos, self.end.pos)
+
+    class Rectangle(Base):
 
-		def set_pos(self, pos): # Change the pos of point inside the workspace
-			x, y = pos
+        def __init__(self, p1, p2):
+            Base.__init__(self)
+            self.color = BLACK
+            self.type = "Rectangle"
+            self.width = abs(p1.pos[0]-p2.pos[0])
+            self.height = abs(p1.pos[1]-p2.pos[1])
+            self.p1 = p1
+            self.p2 = p2
 
-			x = max(x, left_bar_size)
-			x = min(x, SIZE[0])
+            self.spec = "Rectangle: %s x %s"%(self.width, self.height)
+
+            self.start = ( min(p1.pos[0], p2.pos[0]), min(p1.pos[1], p2.pos[1]) ) # Takes the lower left corner as start
+
+        def Render(self):
+            if self.visible:
+                if self.selected: pygame.draw.rect(screen, RED, [self.start[0], self.start[1], self.width, self.height], 2)
+                else: pygame.draw.rect(screen, self.color, [self.start[0], self.start[1], self.width, self.height], 2)
+
+        def Update(self):
+            self.spec = "Rectangle: %s x %s"%(self.width, self.height)
+            self.width = abs(self.p1.pos[0]-self.p2.pos[0])
+            self.height = abs(self.p1.pos[1]-self.p2.pos[1])
+
+            self.start = ( min(self.p1.pos[0], self.p2.pos[0]), min(self.p1.pos[1], self.p2.pos[1]) )
+
+    class Circle(Base):
+
+        def __init__(self, p1, p2):
+            Base.__init__(self)
+            self.color = BLACK
+            self.type = "Circle"
+            self.p1 = p1
+            self.p2 = p2
+            self.radius = Point_Distance(p1.pos, p2.pos)
+            self.border = 2
+
+            self.spec = "Circle: %s"%self.radius
+
+        def Render(self):
+            if self.visible:
+                if self.selected: pygame.draw.circle(screen, RED, self.p1.pos, self.radius, min(self.border, self.radius))
+                else: pygame.draw.circle(screen, self.color, self.p1.pos, self.radius, min(self.border, self.radius))
+
+        def Update(self):
+            self.radius = Point_Distance(self.p1.pos, self.p2.pos)
+            self.spec = "Circle: %s"%self.radius
+
+    class Polygon(Base):
+        """The polygons."""
+
+        def __init__(self, point_list):
+            Base.__init__(self)
+            self.point_list = point_list
+            self.type = "Polygon"
+            self.color = BLACK
+            self.point_list
+            self.width = 2
+
+            self.spec = "Polygon: %s sides"%(len(point_list))
+
+        def Render(self):
+            if self.visible:
+                if self.selected: pygame.draw.polygon(screen, RED, [x.pos for x in self.point_list], self.width )
+                else: pygame.draw.polygon(screen, self.color, [x.pos for x in self.point_list], self.width )
+
+        def Update(self): pass
+
+    class Tool:
+        """The tools."""
+
+        def __init__(self, name, pos):
+            self.name = name
+            self.selected = False
+            self.pos = pos
+            self.type = "Tool"
+
+        def Render(self):
+
+            # Different color if the tool is selected
+            if self.selected: self.color = LGRAY
+            else: self.color = WHITE
+
+            pygame.draw.rect(screen, self.color, [self.pos[0], self.pos[1], tool_size, bar_size])
+            pygame.draw.rect(screen, BLACK, [self.pos[0], self.pos[1], tool_size, bar_size], 1) # Mask
+
+            tool_label = tool_font.render(self.name, True, BLACK) # Label
+            offset = (tool_size-tool_label.get_width())/2
+            screen.blit(tool_label, [self.pos[0]+offset, 0])
+
+    class Roll:
+        """Offset for the scrolling in the left bar."""
+        def __init__(self): self.roll = 0
+
+        def update(self, offset = 0):
+            self.roll += offset
+            self.roll = min((len(RenderList)+1)*label_height-( SIZE[1]-bar_size), self.roll) # Don't scroll to much
+            self.roll = max(0, self.roll) # Makes sure to limit the mouse scroll up
+
+    def Point_Distance(A, B):
+        """Euclidian distance between A and B."""
+        return int( pow( pow(B[0]-A[0], 2) + pow(B[1]-A[1],2), 0.5 ) )
+
+    def pick_tool(n = 0):
+        """Select the tool number n."""
+        for item in tools: item.selected = False # Resets all the tools
+        tools[n].selected = True # Sets this tool to true
 
-			y = max(y, bar_size)
-			y = min(y, SIZE[1]-command_height)
+    def selection(item):
+        """Selects object when mouse clicked."""
+        if item.selected:
+            item.selected = False
+            selected_items.remove(item)
+        else:
+            item.selected = True
+            selected_items.append(item)
 
-			self.pos = x, y
+    screen = pygame.display.set_mode(SIZE)
+    pygame.display.set_caption("PyDraw")
 
-	class Segment:
-		"""The segments."""
+    done = False
 
-		def __init__(self, start, end):
-			self.color = BLACK
-			self.start = start
-			self.end = end
-			self.type = "Segment"
-			self.visible = "True"
-			self.selected = False
+    delay = 10
+    border = 2 # The borders. Wherever this appears, is to let objects a little away of the limit line.
+    label_height = 20 # The size of the label on the left bar
+    RenderList = [] # List of objects
+    selected_items = []
 
-			self.spec = "Segment: %s"%Point_Distance(self.start.pos, self.end.pos)
+    tool_list = "Selector", "Point", "Segment", "Polygon", "Rectangle", "Circle"
+    n_tool = len(tool_list)
+    tool_size = SIZE[0]/2/n_tool
+    bar_size = SIZE[1]/10
+    left_bar_size = SIZE[0]/8
+    selected_tool = 0 # First tool selected
+    tool_help = (    "Click and drag objects. Press enter to deselect all.",
+            "Click to create points",
+            "Click two points",
+            "Select the points then press enter.", "Click the points of diagonal.",
+            "Select the center and other point.", "Type in.")
 
-		def Render(self):
-			if self.visible: pygame.draw.line(screen, self.color, self.start.pos, self.end.pos)
+    # Mouse
+    MousePressed = False # Pressed down THIS FRAME
+    MouseDown = False # Mouse is held down
+    MouseReleased = False # Released THIS FRAME
+    clicks_mouse_selected = 0 # Count frames of mouse pressed. This helps in dragging around
+    Target = None # Target of Drag/Drop
+    roll = Roll()
+    pygame.init()
 
-		def Update(self):
-			self.spec = "Segment: %s"%Point_Distance(self.start.pos, self.end.pos)
+    tool_font = pygame.font.SysFont('Arial', 20, True) # Label of everything
+    help_font = pygame.font.SysFont('Arial', 12) # The help
+    label_font = pygame.font.SysFont('Arial', 15) # Objects specification
 
-	class Rectangle:
+    # Start the tools
+    tools = []
+    for i in xrange(n_tool):
+        tools.append( Tool( tool_list[i], [i*tool_size, 0] ) )
 
-		def __init__(self, p1, p2):
-			self.color = BLACK
-			self.type = "Rectangle"
-			self.visible = "True"
-			self.selected = False
-			self.width = abs(p1.pos[0]-p2.pos[0])
-			self.height = abs(p1.pos[1]-p2.pos[1])
-			self.p1 = p1
-			self.p2 = p2
+    tools[selected_tool].selected = True # Selects the first tool
 
-			self.spec = "Rectangle: %s x %s"%(self.width, self.height)
+    while not done:
 
-			self.start = ( min(p1.pos[0], p2.pos[0]), min(p1.pos[1], p2.pos[1]) ) # Takes the lower left corner as start
+        screen.fill(WHITE) # clear screen
 
-		def Render(self):
-			if self.visible: pygame.draw.rect(screen, self.color, [self.start[0], self.start[1], self.width, self.height], 2)
+        mouse_pos = pygame.mouse.get_pos() # Get mouse
 
-		def Update(self):
-			self.spec = "Rectangle: %s x %s"%(self.width, self.height)
-			self.width = abs(self.p1.pos[0]-self.p2.pos[0])
-			self.height = abs(self.p1.pos[1]-self.p2.pos[1])
+        for Event in pygame.event.get():
 
-			self.start = ( min(self.p1.pos[0], self.p2.pos[0]), min(self.p1.pos[1], self.p2.pos[1]) )
+            print Event
 
-	class Circle:
+            if Event.type == pygame.QUIT: # Close program
+                done = True
+                break
 
-		def __init__(self, p1, p2):
-			self.color = BLACK
-			self.type = "Circle"
-			self.visible = "True"
-			self.selected = False
-			self.p1 = p1
-			self.p2 = p2
-			self.radius = Point_Distance(p1.pos, p2.pos)
-			self.border = 2
+            elif Event.type == pygame.MOUSEBUTTONDOWN: # Mouse pressed
 
-			self.spec = "Circle: %s"%self.radius
+                if Event.button == 1: # Left mouse
+                    MousePressed = True
+                    MouseDown = True
 
-		def Render(self):
-			if self.visible: pygame.draw.circle(screen, self.color, self.p1.pos, self.radius, min(self.border, self.radius))
+            elif Event.type == pygame.MOUSEBUTTONUP: # Mouse released
 
-		def Update(self):
-			self.radius = Point_Distance(self.p1.pos, self.p2.pos)
-			self.spec = "Circle: %s"%self.radius
-
-	class Polygon:
-		"""The polygons."""
-
-		def __init__(self, point_list):
-			self.point_list = point_list
-			self.type = "Polygon"
-			self.visible = "True"
-			self.color = BLACK
-			self.point_list
-			self.width = 2
-			self.selected = False
-
-			self.spec = "Polygon: %s sides"%(len(point_list))
-
-		def Render(self):
-			if self.visible: pygame.draw.polygon(screen, self.color, [x.pos for x in self.point_list], self.width )
-
-		def Update(self): pass
-
-	class Tool:
-		"""The tools."""
-
-		def __init__(self, name, pos):
-			self.name = name
-			self.selected = False
-			self.pos = pos
-			self.type = "Tool"
-
-		def Render(self):
-
-			# Different color if the tool is selected
-			if self.selected: self.color = LGRAY
-			else: self.color = WHITE
+                if Event.button == 1: # Left mouse
+                    MouseReleased = True
+                    MouseDown = False
 
-			pygame.draw.rect(screen, self.color, [self.pos[0], self.pos[1], tool_size, bar_size])
-			pygame.draw.rect(screen, BLACK, [self.pos[0], self.pos[1], tool_size, bar_size], 1) # Mask
-
-			tool_label = tool_font.render(self.name, True, BLACK) # Label
-			offset = (tool_size-tool_label.get_width())/2
-			screen.blit(tool_label, [self.pos[0]+offset, 0])
+                elif Event.button == 4: # Mouse wheel up
+                    if mouse_pos[0] < left_bar_size and mouse_pos[1] > bar_size: # Scroll left bar
+                        roll.update(-20)
 
-	class Roll:
-		"""Offset for the scrolling in the left bar."""
-		def __init__(self): self.roll = 0
+                elif Event.button == 5: # Mouse wheel down
+                    if mouse_pos[0] < left_bar_size and mouse_pos[1] > bar_size:
+                        roll.update(20)
 
-		def update(self, offset = 0):
-			self.roll += offset
-			self.roll = min((len(RenderList)+1)*label_height-( SIZE[1]-bar_size), self.roll) # Don't scroll to much
-			self.roll = max(0, self.roll) # Makes sure to limit the mouse scroll up
+            elif Event.type == pygame.KEYDOWN: # Button pressed
 
-	class Command:
-		"""The command line."""
+                if Event.key == pygame.K_ESCAPE: # Resets tool if esc is pressed
+                    selected_tool = 0
+                    pick_tool(0)
 
-		def __init__(self):
+                elif Event.key == pygame.K_DELETE: # Delete selected objects
+                    for item in selected_items: RenderList.remove(item)
+                    selected_items = []
 
-			self.height = command_height
-			self.width = SIZE[0]-left_bar_size
-			self.line = "" # What will be printed
+                    roll.update() # Updates scrolling. This avoid problem after deleting.
 
-		def Render(self):
-			pygame.draw.rect(screen, LGRAY, [left_bar_size, SIZE[1]-self.height, self.width, self.height], 0)
-			pygame.draw.rect(screen, BLACK, [left_bar_size, SIZE[1]-self.height, self.width, self.height], 2)
+                elif Event.key == pygame.K_h: # Change the visibility of items if h is pressed
+                    for item in selected_items: item.visible = not item.visible
 
-	def Point_Distance(A, B):
-		"""Euclidian distance between A and B."""
-		return int( pow( pow(B[0]-A[0], 2) + pow(B[1]-A[1],2), 0.5 ) )
+                elif Event.key == pygame.K_RETURN:
 
-	def pick_tool(n = 0):
-		"""Select the tool number n."""
-		for item in tools: item.selected = False # Resets all the tools
-		tools[n].selected = True # Sets this tool to true
+                    if selected_tool == 3: # Draw polygon if enter is pressed
 
-	def selection(item):
-		if item.selected:
-			item.selected = False
-			selected_items.remove(item)
-		else:
-			item.selected = True
-			selected_items.append(item)
+                        n = len(selected_items)
 
-	screen = pygame.display.set_mode(SIZE)
-	pygame.display.set_caption("PyDraw")
+                        if n > 2 and set(x.type for x in selected_items)==set("Point"): RenderList.append( Polygon( selected_items ) ) # More than two points
 
-	done = False
+                    for item in selected_items: item.selected = False
+                    selected_items = []
 
-	delay = 10
-	border = 2 # The borders. Wherever this appears, is to let objects a little away of the limit line.
-	label_height = 20 # The size of the label on the left bar
-	command_height = 40
-	RenderList = [] # List of objects
-	selected_items = []
+                elif Event.key == pygame.K_PAGEUP: # Move object up
 
-	tool_list = "Selector", "Point", "Segment", "Polygon", "Rectangle", "Circle"
-	n_tool = len(tool_list)
-	tool_size = SIZE[0]/2/n_tool
-	bar_size = SIZE[1]/10
-	left_bar_size = SIZE[0]/8
-	selected_tool = 0 # First tool selected
-	tool_help = (	"Click and drag objects. Press enter to deselect all.",
-			"Click to create points",
-			"Click two points",
-			"Select the points then press enter.", "Click the points of diagonal.", "", "")
+                    for item in RenderList:
+                        if item.selected:
+                            i = RenderList.index(item)
 
-	# Mouse
-	MousePressed = False # Pressed down THIS FRAME
-	MouseDown = False # Mouse is held down
-	MouseReleased = False # Released THIS FRAME
-	clicks_mouse_selected = 0 # Count frames of mouse pressed. This helps in dragging around
-	Target = None # Target of Drag/Drop
-	roll = Roll()
-	command = Command()
+                            RenderList[(i-1)%len(RenderList)], RenderList[i] = RenderList[i], RenderList[(i-1)%len(RenderList)]
 
-	pygame.init()
+                elif Event.key == pygame.K_PAGEDOWN: # Move object down
 
-	tool_font = pygame.font.SysFont('Arial', 20, True) # Label of everything
-	help_font = pygame.font.SysFont('Arial', 12) # The help
-	label_font = pygame.font.SysFont('Arial', 15) # Objects specification
+                    for item in RenderList[::-1]:
+                        if item.selected:
+                            i = RenderList.index(item)
 
-	# Start the tools
-	tools = []
-	for i in xrange(n_tool):
-		tools.append( Tool( tool_list[i], [i*tool_size, 0] ) )
+                            RenderList[(i+1)%len(RenderList)], RenderList[i] = RenderList[i], RenderList[(i+1)%len(RenderList)]
 
-	tools[selected_tool].selected = True # Selects the first tool
+        if MousePressed == True:
 
-	while not done:
+            if mouse_pos[1] < bar_size and mouse_pos[0] < SIZE[0]/2: # Mouse over the tools
 
-		screen.fill(WHITE) # clear screen
+                selected_tool = mouse_pos[0]/tool_size
+                pick_tool(selected_tool) # Select tool based on user's choice
 
-		pos = pygame.mouse.get_pos() # Get mouse
+            elif mouse_pos[0] < left_bar_size: # Mouse over the left bar
 
-		for Event in pygame.event.get():
+                y = (mouse_pos[1]-bar_size+roll.roll-border)/label_height # Takes the element considering scrolling
 
-			if Event.type == pygame.QUIT: # Close program
-				done = True
-				break
+                if 0 <= y < len(RenderList): # Selection on the left bar
+                    item = RenderList[y]
 
-			elif Event.type == pygame.MOUSEBUTTONDOWN: # Mouse pressed
+                    if item in selected_items:
+                        item.selected = False
+                        selected_items.remove(item)
 
-				if Event.button == 1: # Left mouse
-					MousePressed = True
-					MouseDown = True
+                    else:
+                        item.selected = True
+                        selected_items.append(item)
 
-			elif Event.type == pygame.MOUSEBUTTONUP: # Mouse released
+            else:
 
-				if Event.button == 1: # Left mouse
-					MouseReleased = True
-					MouseDown = False
+                for item in RenderList: # search all items
 
-				elif Event.button == 4: # Mouse wheel up
-					if pos[0] < left_bar_size and pos[1] > bar_size: # Scroll left bar
-						roll.update(-20)
+                    if item.type == "Point" and abs(item.pos[0]-mouse_pos[0]) <= item.size and abs(item.pos[1]-mouse_pos[1]) <= item.size:
+                        Target = item # "pick up" item
+            
+                if Target is None: # didn't find any?
 
-				elif Event.button == 5: # Mouse wheel down
-					if pos[0] < left_bar_size and pos[1] > bar_size:
-						roll.update(20)
+                    if selected_tool == 1:
+                        Target = Point( (0, 0, 255), mouse_pos, 10) # create a new one
+                        RenderList.append(Target) # add to list of things to draw
+            
+        if MouseDown and Target is not None: # if we are dragging something
 
-			elif Event.type == pygame.KEYDOWN: # Button pressed
+            if selected_tool == 0 and clicks_mouse_selected > delay: # The mouse clicked part makes sure that the user isn't selecting
+                Target.set_pos(mouse_pos) # move the target with us if the tool is the selector
 
-				if Event.key == pygame.K_ESCAPE: # Resets tool if esc is pressed
-					selected_tool = 0
-					pick_tool(0)
+            clicks_mouse_selected += 1
+        
+        if MouseReleased:
 
-				elif Event.key == pygame.K_DELETE: # Delete selected objects
-					for item in selected_items: RenderList.remove(item)
-					selected_items = []
+            if selected_tool == 0 and Target is not None and clicks_mouse_selected <= delay and Target.visible: # Simple selection
 
-					roll.update() # Updates scrolling. This avoid problem after deleting.
+                selection(Target)
 
-				elif Event.key == pygame.K_h: # Change the visibility of items if h is pressed
-					for item in selected_items: item.visible = not item.visible
+            elif selected_tool == 2 and Target is not None and clicks_mouse_selected <= delay: # Draw segment
 
-				elif Event.key == pygame.K_RETURN:
+                selection(Target)
 
-					if selected_tool == 3: # Draw polygon if enter is pressed
+                if len(selected_items) == 2: # Two points selected and the segment tool
 
-						n = len(selected_items)
+                    # Draws the segment
+                    RenderList.append( Segment( selected_items[0], selected_items[1] ) )
 
-						if n > 2: RenderList.append( Polygon( selected_items ) )
+                    # Unselect items
+                    for item in selected_items: item.selected = False
+                    selected_items = []
 
-					for item in selected_items: item.selected = False
-					selected_items = []
+            elif selected_tool == 4 and Target is not None and clicks_mouse_selected <= delay: # Draw rectangle
 
-				elif Event.key == pygame.K_PAGEUP: # Move object up
+                selection(Target)
 
-					for item in RenderList:
-						if item.selected:
-							i = RenderList.index(item)
+                if len(selected_items) == 2: # Two points selected and the rectangle tool
 
-							RenderList[(i-1)%len(RenderList)], RenderList[i] = RenderList[i], RenderList[(i-1)%len(RenderList)]
+                    # Draws the segment
+                    RenderList.append( Rectangle( selected_items[0], selected_items[1] ) )
 
-				elif Event.key == pygame.K_PAGEDOWN: # Move object down
+                    # Unselect items
+                    for item in selected_items: item.selected = False
+                    selected_items = []
 
-					for item in RenderList[::-1]:
-						if item.selected:
-							i = RenderList.index(item)
+            elif selected_tool == 5 and Target is not None and clicks_mouse_selected <= delay: # Draw circle
 
-							RenderList[(i+1)%len(RenderList)], RenderList[i] = RenderList[i], RenderList[(i+1)%len(RenderList)]
+                selection(Target)
 
-		if MousePressed == True:
+                if len(selected_items) == 2: # Two points selected and the segment tool
 
-			if pos[1] < bar_size and pos[0] < SIZE[0]/2: # Mouse over the tools
+                    # Draws the segment
+                    RenderList.append( Circle( selected_items[0], selected_items[1] ) )
 
-				selected_tool = pos[0]/tool_size
-				pick_tool(selected_tool) # Select tool based on user's choice
+                    # Unselect items
+                    for item in selected_items: item.selected = False
+                    selected_items = []
 
-			elif pos[0] < left_bar_size: # Mouse over the left bar
+            elif selected_tool == 3 and Target is not None and clicks_mouse_selected < delay: # Polygon tool selection
 
-				y = (pos[1]-bar_size+roll.roll-border)/label_height # Takes the element considering scrolling
+                selection(Target)
 
-				if 0 <= y < len(RenderList): # Selection on the left bar
-					item = RenderList[y]
+            clicks_mouse_selected = 0 # Resets clicks mouse selected
 
-					if item in selected_items:
-						item.selected = False
-						selected_items.remove(item)
+            Target = None # Drop item, if any
+            
+        for item in RenderList:
+            item.Update()
+            item.Render() # Draw all items
+            
+        MousePressed = False # Reset these to False
+        MouseReleased = False
 
-					else:
-						item.selected = True
-						selected_items.append(item)
+        # Draw left bar
+        pygame.draw.rect(screen, LGRAY, [0, bar_size, left_bar_size, 720-bar_size], 0)
+        pygame.draw.rect(screen, BLACK, [0, bar_size, left_bar_size, 720-bar_size], 2) # Mask
 
-			else:
+        # Put the objects in the left bar
+        for i in xrange(len(RenderList)):
 
-				for item in RenderList: # search all items
+            x = border
+            y = border+bar_size+i*label_height-roll.roll
 
-					if item.type == "Point" and abs(item.pos[0]-pos[0]) <= item.size and abs(item.pos[1]-pos[1]) <= item.size:
-						Target = item # "pick up" item
-			
-				if Target is None: # didn't find any?
+            if RenderList[i].visible: this_color = BLACK
+            else: this_color = GRAY
 
-					if selected_tool == 1:
-						Target = Point( (0, 0, 255), pos, 10) # create a new one
-						RenderList.append(Target) # add to list of things to draw
-			
-		if MouseDown and Target is not None: # if we are dragging something
+            obj_text = label_font.render("%s"%RenderList[i].spec, True, this_color)
 
-			if selected_tool == 0 and clicks_mouse_selected > delay: # The mouse clicked part makes sure that the user isn't selecting
-				Target.set_pos(pos) # move the target with us if the tool is the selector
+            if RenderList[i].selected: pygame.draw.rect(screen, RED, [x, y, left_bar_size-border, label_height], border)
 
-			clicks_mouse_selected += 1
-		
-		if MouseReleased:
+            screen.blit(obj_text, [x, y])
 
-			if selected_tool == 0 and Target is not None and clicks_mouse_selected <= delay and Target.visible: # Simple selection
+        # Render help.
+        pygame.draw.rect(screen, WHITE, [0, 0, SIZE[0], bar_size], 0) # Rectangle containing tools and help
+        pygame.draw.rect(screen, BLACK, [0, 0, SIZE[0], bar_size], 2) # Rectangle containing tools and help
 
-				selection(Target)
+        help_text = help_font.render(tool_help[selected_tool], True, BLACK)
+        screen.blit(help_text, [SIZE[0]/2, border])
 
-			elif selected_tool == 2 and Target is not None and clicks_mouse_selected <= delay: # Draw segment
+        # Draw the tools
+        for item in tools: item.Render()
 
-				selection(Target)
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
 
-				if len(selected_items) == 2: # Two points selected and the segment tool
+    pygame.quit()
 
-					# Draws the segment
-					RenderList.append( Segment( selected_items[0], selected_items[1] ) )
-
-					# Unselect items
-					for item in selected_items: item.selected = False
-					selected_items = []
-
-			elif selected_tool == 4 and Target is not None and clicks_mouse_selected <= delay: # Draw rectangle
-
-				selection(Target)
-
-				if len(selected_items) == 2: # Two points selected and the rectangle tool
-
-					# Draws the segment
-					RenderList.append( Rectangle( selected_items[0], selected_items[1] ) )
-
-					# Unselect items
-					for item in selected_items: item.selected = False
-					selected_items = []
-
-			elif selected_tool == 5 and Target is not None and clicks_mouse_selected <= delay: # Draw circle
-
-				selection(Target)
-
-				if len(selected_items) == 2: # Two points selected and the segment tool
-
-					# Draws the segment
-					RenderList.append( Circle( selected_items[0], selected_items[1] ) )
-
-					# Unselect items
-					for item in selected_items: item.selected = False
-					selected_items = []
-
-			elif selected_tool == 3 and Target is not None and clicks_mouse_selected < delay: # Polygon tool selection
-
-				selection(Target)
-
-			clicks_mouse_selected = 0 # Resets clicks mouse selected
-
-			Target = None # Drop item, if any
-			
-		for item in RenderList:
-			item.Update()
-			item.Render() # Draw all items
-			
-		MousePressed = False # Reset these to False
-		MouseReleased = False
-
-		# Draw left bar
-		pygame.draw.rect(screen, LGRAY, [0, bar_size, left_bar_size, 720-bar_size], 0)
-		pygame.draw.rect(screen, BLACK, [0, bar_size, left_bar_size, 720-bar_size], 2) # Mask
-
-		# Put the objects in the left bar
-		for i in xrange(len(RenderList)):
-
-			x = border
-			y = border+bar_size+i*label_height-roll.roll
-
-			if RenderList[i].visible: this_color = BLACK
-			else: this_color = GRAY
-
-			obj_text = label_font.render("%s"%RenderList[i].spec, True, this_color)
-
-			if RenderList[i].selected: pygame.draw.rect(screen, RED, [x, y, left_bar_size-border, label_height], border)
-
-			screen.blit(obj_text, [x, y])
-
-		# Render help.
-		pygame.draw.rect(screen, WHITE, [0, 0, SIZE[0], bar_size], 0) # Rectangle containing tools and help
-		pygame.draw.rect(screen, BLACK, [0, 0, SIZE[0], bar_size], 2) # Rectangle containing tools and help
-		help_text = help_font.render(tool_help[selected_tool], True, BLACK)
-		screen.blit(help_text, [SIZE[0]/2, border])
-
-		# Draw the tools
-		for item in tools: item.Render()
-
-		# Render the command
-		command.Render()
-
-		pygame.display.flip()
-		pygame.time.Clock().tick(60)
-
-	pygame.quit()
+if __name__ == "__main__": main()
